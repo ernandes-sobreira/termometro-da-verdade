@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>🌡️ Termômetro da Verdade — Temperatura e Clima</title>
+<style>
+:root{
+  --bg1:#16326e;      /* frio */
+  --bg2:#b3241a;      /* quente */
+  --accent:#ffc93c;   /* destaque vibrante */
+  --accent-d:#e8ad1c;
+  --success:#2ecc71;
+  --danger:#ff5a52;
+  --ink:#0e1630;
+  --card:rgba(255,255,255,0.96);
+  --glass:rgba(255,255,255,0.14);
+  --glass-b:rgba(255,255,255,0.28);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  min-height:100vh;
+  background:linear-gradient(160deg,var(--bg1) 0%,#8f2f6b 55%,var(--bg2) 100%);
+  background-attachment:fixed;
+  color:#fff;
+  padding:18px 12px 40px;
+  display:flex;flex-direction:column;align-items:center;
+}
+.wrap{width:min(760px,95vw);}
+header{text-align:center;margin-bottom:14px;}
+h1{
+  font-size:clamp(1.7rem,5.5vw,2.7rem);
+  line-height:1.1;font-weight:800;
+  text-shadow:0 3px 14px rgba(0,0,0,.35);
+  letter-spacing:.5px;
+}
+.sub{opacity:.92;font-size:clamp(.82rem,2.6vw,1rem);margin-top:6px}
+
+/* pills de nível */
+.levels{display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin:16px 0 12px}
+.pill{
+  border:2px solid var(--glass-b);
+  background:var(--glass);
+  color:#fff;font-weight:700;
+  padding:9px 15px;border-radius:999px;
+  cursor:pointer;font-size:clamp(.8rem,2.4vw,.98rem);
+  transition:all .25s ease;backdrop-filter:blur(4px);
+}
+.pill:hover{transform:translateY(-2px);border-color:var(--accent)}
+.pill.active{background:var(--accent);color:var(--ink);border-color:var(--accent);box-shadow:0 6px 18px rgba(255,201,60,.4)}
+
+/* HUD */
+.hud{
+  display:flex;flex-wrap:wrap;gap:8px;justify-content:center;margin-bottom:12px;
+}
+.stat{
+  background:var(--glass);border:1px solid var(--glass-b);
+  border-radius:12px;padding:7px 13px;font-size:clamp(.78rem,2.3vw,.92rem);
+  font-weight:600;backdrop-filter:blur(4px);white-space:nowrap;
+}
+.stat b{color:var(--accent)}
+
+.progress-wrap{height:10px;background:var(--glass);border-radius:999px;overflow:hidden;margin-bottom:16px;border:1px solid var(--glass-b)}
+.progress-bar{height:100%;width:0;background:linear-gradient(90deg,var(--accent),#ff8c42);border-radius:999px;transition:width .4s ease}
+
+.howto{
+  text-align:center;font-size:clamp(.82rem,2.5vw,.96rem);
+  opacity:.95;margin-bottom:14px;
+}
+
+/* card da afirmação */
+.card{
+  background:var(--card);color:var(--ink);
+  border-radius:18px;padding:26px 22px;
+  box-shadow:0 14px 40px rgba(0,0,0,.32);
+  transition:transform .25s ease,box-shadow .25s ease;
+}
+.qtag{
+  display:inline-block;background:var(--accent);color:var(--ink);
+  font-weight:800;font-size:.74rem;letter-spacing:1px;text-transform:uppercase;
+  padding:4px 11px;border-radius:999px;margin-bottom:14px;
+}
+.statement{
+  font-size:clamp(1.12rem,3.4vw,1.5rem);font-weight:600;line-height:1.42;
+  min-height:2.4em;display:flex;align-items:center;
+}
+.vf{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:22px}
+.vf button{
+  border:none;border-radius:14px;padding:20px 10px;cursor:pointer;
+  font-size:clamp(1.05rem,3.4vw,1.35rem);font-weight:800;color:#fff;
+  transition:transform .2s ease,box-shadow .2s ease,filter .2s ease;
+  box-shadow:0 8px 20px rgba(0,0,0,.18);
+}
+.btn-v{background:linear-gradient(135deg,#27ae60,#2ecc71)}
+.btn-f{background:linear-gradient(135deg,#c0392b,#ff5a52)}
+.vf button:hover:not(:disabled){transform:translateY(-2px);filter:brightness(1.07)}
+.vf button:disabled{cursor:default;opacity:.55}
+.vf button.chosen{outline:4px solid var(--accent);opacity:1}
+
+/* feedback educativo */
+.feedback{
+  margin-top:18px;border-radius:14px;padding:15px 16px;
+  font-size:clamp(.9rem,2.7vw,1.02rem);line-height:1.45;
+  background:#eef2fb;color:var(--ink);border-left:6px solid #9aa7c7;
+  opacity:0;transform:translateY(6px);transition:all .3s ease;
+}
+.feedback.show{opacity:1;transform:none}
+.feedback.ok{background:#e5f8ee;border-left-color:var(--success)}
+.feedback.no{background:#fdeaea;border-left-color:var(--danger)}
+.feedback .verdict{font-weight:800;display:block;margin-bottom:4px}
+.next-btn{
+  margin-top:16px;width:100%;border:none;border-radius:14px;cursor:pointer;
+  background:var(--ink);color:#fff;font-weight:700;padding:15px;
+  font-size:1rem;transition:transform .2s ease,filter .2s;
+}
+.next-btn:hover{transform:translateY(-2px);filter:brightness(1.15)}
+
+/* animações */
+@keyframes pop{0%{transform:scale(1)}45%{transform:scale(1.04)}100%{transform:scale(1)}}
+@keyframes shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-9px)}40%{transform:translateX(8px)}60%{transform:translateX(-6px)}80%{transform:translateX(5px)}}
+.pop{animation:pop .4s ease}
+.shake{animation:shake .42s ease}
+
+/* tela final */
+.final{
+  background:var(--card);color:var(--ink);border-radius:18px;
+  padding:30px 22px;text-align:center;box-shadow:0 14px 40px rgba(0,0,0,.32);
+}
+.final h2{font-size:clamp(1.5rem,5vw,2.1rem);margin-bottom:8px;color:var(--success)}
+.final .score-big{font-size:clamp(2.6rem,9vw,3.6rem);font-weight:800;color:var(--accent-d);margin:6px 0}
+.final p{opacity:.85;margin-bottom:6px}
+.save-row{display:flex;gap:10px;margin:18px 0 6px;flex-wrap:wrap;justify-content:center}
+.save-row input{
+  flex:1;min-width:160px;padding:13px 15px;border-radius:12px;border:2px solid #cfd6e6;
+  font-size:1rem;color:var(--ink);
+}
+.save-row button,.replay{
+  border:none;border-radius:12px;cursor:pointer;font-weight:800;
+  padding:13px 20px;font-size:1rem;color:var(--ink);background:var(--accent);
+  transition:transform .2s ease,filter .2s;
+}
+.save-row button:hover,.replay:hover{transform:translateY(-2px);filter:brightness(1.06)}
+.replay{margin-top:12px;background:var(--ink);color:#fff}
+
+/* ranking */
+.rank{
+  margin-top:20px;background:var(--glass);border:1px solid var(--glass-b);
+  border-radius:16px;padding:16px 16px 8px;backdrop-filter:blur(5px);
+}
+.rank h3{font-size:1.05rem;margin-bottom:4px;display:flex;align-items:center;gap:8px;justify-content:center;text-align:center}
+.rank .lvl-tag{font-size:.78rem;opacity:.9;text-align:center;margin-bottom:10px}
+.rank ol{list-style:none;counter-reset:r}
+.rank li{
+  counter-increment:r;display:flex;align-items:center;gap:10px;
+  padding:8px 6px;border-bottom:1px solid rgba(255,255,255,.13);font-size:.92rem;
+}
+.rank li:last-child{border-bottom:none}
+.rank li::before{content:counter(r);font-weight:800;color:var(--accent);width:22px;text-align:center}
+.rank li .nm{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank li .sc{font-weight:700}
+.rank .muted{opacity:.8;font-size:.86rem;text-align:center;padding:10px 0}
+
+footer{
+  margin-top:26px;text-align:center;font-size:.86rem;line-height:1.6;
+}
+footer .idea{
+  display:inline-block;font-weight:800;font-size:clamp(.95rem,2.8vw,1.1rem);
+  background:var(--glass);border:1px solid var(--glass-b);
+  padding:8px 16px;border-radius:999px;margin-bottom:6px;
+}
+footer .meta{opacity:.82}
+.hide{display:none!important}
+
+/* ===== TERMÔMETRO DA VERDADE · REDESIGN INTERATIVO ===== */
+:root{--bg1:#090f2c;--bg2:#151538;--accent:#88f5db;--accent-d:#40ddbf;--success:#20c99c;--danger:#ff6682;--ink:#eef6ff;--card:rgba(18,31,60,.93);--glass:rgba(28,41,79,.62);--glass-b:rgba(170,213,255,.18)}
+body{background:#080f26;color:var(--ink);padding:28px 20px 35px;position:relative;overflow-x:hidden;isolation:isolate}
+body:before{content:"";position:fixed;inset:-20%;z-index:-3;background:radial-gradient(ellipse at 16% 25%,#134987aa,transparent 38%),radial-gradient(ellipse at 80% 75%,#da48634d,transparent 40%),radial-gradient(ellipse at 54% 55%,#2a246e88,transparent 48%);animation:aurora 18s ease-in-out infinite alternate}
+body:after{content:"";position:fixed;inset:0;z-index:-2;opacity:.35;background-image:radial-gradient(#c8dfff 1px,transparent 1px);background-size:35px 35px;mask-image:linear-gradient(90deg,#0008,transparent 45%,#0006);pointer-events:none}
+@keyframes aurora{from{transform:translate(-2%,-2%) rotate(-3deg) scale(1)}to{transform:translate(2%,3%) rotate(5deg) scale(1.1)}}
+.wrap{width:min(1080px,100%);position:relative}
+header{text-align:left;margin:0}
+.hero{display:grid;grid-template-columns:1fr 220px;gap:30px;align-items:center;padding:8px 10px 16px}
+.hero .eyebrow{display:inline-flex;padding:7px 13px;border-radius:999px;border:1px solid #6cebc55c;background:#0c5d6075;font-size:.8rem;letter-spacing:.08em;font-weight:800;color:#a4ffe2;margin-bottom:13px}
+h1{font-size:clamp(2.6rem,5.2vw,4.6rem);letter-spacing:-.055em;line-height:1.02;text-shadow:none;max-width:650px}
+h1 em{font-style:normal;color:#85f5db}
+.sub{font-size:clamp(.98rem,1.6vw,1.12rem);color:#d5e4f5;max-width:570px;line-height:1.6;margin-top:13px}
+.how-intro{font-size:.91rem;color:#c8d8ee;margin-top:15px}
+.thermo-widget{position:relative;margin:auto;width:155px;height:244px;filter:drop-shadow(0 14px 35px #07132180)}
+.thermo-glow{position:absolute;width:155px;height:155px;top:40px;background:radial-gradient(circle,#ff8b7777,transparent 68%);border-radius:50%;animation:glow 4s ease-in-out infinite alternate}
+@keyframes glow{to{opacity:.55;transform:scale(1.22)}}
+.thermo-tube{position:absolute;top:15px;left:60px;width:46px;height:169px;border-radius:30px;background:linear-gradient(90deg,#d2e5ff52,#fff9,#d2e5ff47);border:3px solid #dbe9ffdd;box-shadow:inset 0 0 10px #aab9e78f,0 0 28px #6aeed629}
+.thermo-tube:before{content:"";position:absolute;inset:7px 11px;background:#111c3a;border-radius:20px}
+.thermo-fill{position:absolute;bottom:5px;left:12px;right:12px;height:var(--heat,0%);border-radius:17px;background:linear-gradient(0deg,#fe537c,#ff9e78);box-shadow:0 0 20px #ff6688ad;transition:height .85s cubic-bezier(.2,.85,.25,1),background .4s}
+.thermo-bulb{position:absolute;bottom:20px;left:44px;width:78px;height:78px;background:radial-gradient(circle at 38% 30%,#ffc49e,#ff6c80 45%,#e94483);border:7px solid #f5f8ffea;border-radius:50%;box-shadow:0 0 20px #fe718a75,inset -7px -8px 15px #a62266}
+.thermo-widget .tick{position:absolute;left:111px;width:20px;height:2px;background:#d3e9fc88}
+.thermo-widget .tick.a{top:47px}.thermo-widget .tick.b{top:83px}.thermo-widget .tick.c{top:119px}
+.thermo-caption{position:absolute;bottom:-6px;left:-48px;width:255px;text-align:center;font-size:.82rem;color:#c8e8ed;font-weight:700}
+.thermo-widget.is-correct{animation:thermo-joy .5s ease}
+.thermo-widget.is-wrong{animation:thermo-wrong .4s ease}
+@keyframes thermo-joy{50%{transform:scale(1.07)}}@keyframes thermo-wrong{20%,60%{transform:translateX(-7px)}40%,80%{transform:translateX(7px)}}
+.dashboard{display:grid;grid-template-columns:1fr;gap:12px;margin:0 0 20px}
+.levels{margin:0;display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.pill{background:#182646cc;border:1px solid #9dc8ed55;padding:13px 10px;border-radius:14px;box-shadow:none}
+.pill.active{background:linear-gradient(135deg,#6ff2d3,#9bf3a6);border-color:#a6ffe0;color:#08263d;box-shadow:0 7px 23px #51f4b52b}
+.pill:hover{border-color:#8af0d9}
+.hud{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0}
+.stat{padding:14px 13px;background:#142646c7;border:1px solid #99c9f341;border-radius:15px;font-size:.91rem;display:flex;flex-wrap:wrap;justify-content:center;align-items:center;gap:6px}
+.stat b{color:#9af7df;font-variant-numeric:tabular-nums}
+.progress-wrap{height:8px;background:#aac6fb26;margin:2px 0 12px;border:none}
+.progress-bar{background:linear-gradient(90deg,#60e4d4,#a3f5b0)}
+.howto{text-align:left;color:#cdddf0;margin:0 0 12px;font-size:.92rem}
+.card,.final{background:linear-gradient(150deg,#172a4bf2,#111c37f5);color:#f5f8ff;border:1px solid #9bbffb42;border-radius:24px;padding:30px;box-shadow:0 22px 50px #030a1fa8;overflow:hidden}
+.card{position:relative}
+.card:before{content:"";position:absolute;top:-180px;right:-190px;width:350px;height:350px;background:radial-gradient(circle,#2da9b125,transparent 72%);pointer-events:none}
+.qtag{background:#254970;color:#a6f8df;letter-spacing:.08em;border:1px solid #90f9d569;margin-bottom:18px;padding:7px 13px}
+.statement{font-size:clamp(1.35rem,2.6vw,2rem);line-height:1.4;min-height:2.8em;max-width:940px;font-weight:730;letter-spacing:-.02em}
+.vf{gap:16px;margin-top:28px}
+.vf button{min-height:85px;border-radius:17px;font-size:clamp(1.06rem,2vw,1.35rem);box-shadow:inset 0 1px 0 #ffffff52,0 9px 25px #010d2599;position:relative}
+.btn-v{background:linear-gradient(135deg,#13a887,#16c994)}
+.btn-f{background:linear-gradient(135deg,#e14c73,#ff6178)}
+.vf button:hover:not(:disabled){transform:translateY(-4px) scale(1.01);box-shadow:0 12px 32px #0007}
+.vf button:focus-visible,.pill:focus-visible,.next-btn:focus-visible{outline:3px solid #fbe38f;outline-offset:3px}
+.vf button.chosen{outline:3px solid #fff}
+.feedback{border-left-width:4px;background:#243657;color:#eaf6ff}
+.feedback.ok{background:#123e43;color:#e8fff7;border-color:#5debc1}
+.feedback.no{background:#462b49;color:#fff2f6;border-color:#ff7890}
+.next-btn{background:#8ff4d7;color:#10233c;border-radius:14px}
+.final h2{color:#a2ffdb}.final .score-big{color:#b3f5d7}
+.save-row input{background:#0e1b33;border-color:#90badd75;color:white}
+.save-row button,.replay{background:#88efdb;color:#061f38}
+.rank{background:#152747a8;border:1px solid #9ec4eb43;border-radius:18px;padding:20px 24px;margin-top:16px}
+.rank h3{justify-content:flex-start;font-size:1.15rem}
+.rank .lvl-tag{text-align:left;color:#c6dcec}
+.rank li{border-color:#a7c8ef2b}
+footer .idea{background:none;border:0;padding:0;font-size:.91rem;color:#d5e8f6}
+footer .meta{font-size:.74rem;color:#98adc9}
+.hide{display:none!important}
+@media(max-width:720px){body{padding:16px 12px 25px}.hero{grid-template-columns:1fr 125px;gap:0;padding:0 0 18px}h1{font-size:clamp(2rem,7vw,3rem)}.hero .eyebrow{font-size:.66rem}.thermo-widget{transform:scale(.65);transform-origin:center left;width:115px}.thermo-caption{font-size:.75rem}.levels{grid-template-columns:repeat(2,1fr)}.hud{grid-template-columns:repeat(2,1fr)}.card,.final{padding:21px}.statement{font-size:1.32rem}.vf{gap:10px}.vf button{padding:15px 5px;min-height:75px}}
+@media(max-width:420px){.hero{grid-template-columns:1fr 92px}.thermo-widget{transform:scale(.53)}.sub{font-size:.86rem}.how-intro{font-size:.78rem}.vf button{font-size:1rem}}
+@media(prefers-reduced-motion:reduce){body:before,.thermo-glow{animation:none!important}.thermo-fill{transition:none!important}}
+
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="hero">
+    <div class="hero-copy">
+      <span class="eyebrow">🌎 CIÊNCIA EM JOGO · VERDADEIRO OU FALSO</span>
+      <h1>Termômetro<br>da <em>Verdade</em></h1>
+      <div class="sub">O que você realmente sabe sobre temperatura, clima e aquecimento global?</div>
+      <div class="how-intro">Decida se cada afirmação é verdadeira ou falsa. Descubra o porquê e desafie seus conhecimentos.</div>
+    </div>
+    <div class="thermo-widget" id="thermoWidget" role="img" aria-label="Termômetro de desempenho que reage aos acertos no quiz">
+      <span class="thermo-glow"></span>
+      <span class="thermo-tube"><span class="thermo-fill" id="thermoFill"></span></span>
+      <span class="thermo-bulb"></span>
+      <span class="tick a"></span><span class="tick b"></span><span class="tick c"></span>
+      <span class="thermo-caption" id="thermoCaption">0% do desafio</span>
+    </div>
+  </header>
+
+  <div class="dashboard"><div class="levels" id="levels">
+    <button class="pill active" data-lvl="basico">Básico</button>
+    <button class="pill" data-lvl="inter">Intermediário</button>
+    <button class="pill" data-lvl="dificil">Difícil</button>
+    <button class="pill" data-lvl="carbonauta">🛰️ Carbonauta</button>
+  </div>
+
+  <div class="hud">
+    <div class="stat">Tempo: <b id="hTime">0s</b></div>
+    <div class="stat">Acertos: <b id="hHit">0/0</b></div>
+    <div class="stat">Erros: <b id="hErr">0</b></div>
+    <div class="stat">Sequência: <b id="hStreak">0</b>🔥</div>
+  </div>
+
+  </div><div class="progress-wrap"><div class="progress-bar" id="prog"></div></div>
+
+  <div class="howto" id="howto">Escolha uma resposta e descubra a explicação. O termômetro mostra sua taxa de acertos.</div>
+
+  <!-- área de jogo -->
+  <div id="game"></div>
+
+  <!-- ranking -->
+  <div class="rank">
+    <h3>🏆 Ranking Global</h3>
+    <div class="lvl-tag" id="rankLvl">Nível: Básico</div>
+    <ol id="rankList"></ol>
+    <div class="muted" id="rankMsg">Carregando ranking…</div>
+  </div>
+
+  <footer>
+    <div class="idea">— Idealizado por ERNANDES SOBREIRA —</div><br>
+    <div class="meta">Tema: Temperatura e clima · Gênero: Verdadeiro ou Falso · app ambiental do dia (2026-08-05)</div>
+  </footer>
+</div>
+
+<script>
+/* ============ FIREBASE (somente ranking) ============ */
+const firebaseConfig = {
+  apiKey: "AIzaSyCbXi3UCVl8oLleBzGb6DqWSxbZmZU2yDQ",
+  authDomain: "jogos-ranking.firebaseapp.com",
+  databaseURL: "https://jogos-ranking-default-rtdb.firebaseio.com",
+  projectId: "jogos-ranking",
+  storageBucket: "jogos-ranking.firebasestorage.app",
+  messagingSenderId: "958784915420",
+  appId: "1:958784915420:web:4212d3ad278f02d600f119"
+};
+const GAME_ID = "2026-08-05-termometro-da-verdade";
+
+let db=null, fs=null;
+async function initFirebase(){
+  try{
+    const appMod = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js");
+    fs = await import("https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js");
+    const app = appMod.initializeApp(firebaseConfig);
+    db = fs.getFirestore(app);
+    return true;
+  }catch(e){ console.warn("Firebase indisponível:",e); return false; }
+}
+
+/* ============ CONTEÚDO — 4 níveis ============
+   a: true  => afirmação VERDADEIRA
+   a: false => afirmação FALSA
+   fb: explicação educativa (1–2 frases)                              */
+const DATA = {
+  basico:[
+    {t:"O clima é o padrão médio do tempo de uma região ao longo de muitos anos.",a:true,fb:"O clima é a média do tempo por décadas; já o tempo (chuva, sol) muda de um dia para o outro."},
+    {t:"Tempo e clima são palavras que significam exatamente a mesma coisa sempre.",a:false,fb:"Tempo é o estado da atmosfera agora; clima é o padrão médio ao longo de muitos anos."},
+    {t:"A temperatura média da Terra vem subindo bastante nas últimas décadas.",a:true,fb:"A média global já subiu cerca de 1,5°C em relação ao período pré-industrial (antes de 1900)."},
+    {t:"Queimar gasolina e carvão não causa nenhum efeito sobre o clima do planeta.",a:false,fb:"Queimar combustíveis libera gases que retêm calor e aquecem a atmosfera da Terra."},
+    {t:"As árvores ajudam a resfriar o ambiente e a absorver o gás carbônico do ar.",a:true,fb:"A sombra e a transpiração das plantas refrescam o ar, e elas absorvem CO2 ao crescer."},
+    {t:"O gelo dos polos está crescendo cada vez mais por causa do aquecimento global.",a:false,fb:"O aquecimento derrete o gelo dos polos e das geleiras, o que eleva o nível do mar."},
+    {t:"A energia solar e a energia do vento ajudam a reduzir o aquecimento do planeta.",a:true,fb:"São fontes limpas: geram eletricidade quase sem liberar gases de efeito estufa."},
+    {t:"O suor e o vento são os principais gases que aquecem a atmosfera da Terra.",a:false,fb:"Os gases que aquecem o planeta são o CO2, o metano e outros gases de efeito estufa."}
+  ],
+  inter:[
+    {t:"O efeito estufa é um processo natural que mantém a Terra aquecida e habitável.",a:true,fb:"Sem ele, a média do planeta seria cerca de -18°C; o problema é o seu reforço pelo homem."},
+    {t:"O gás carbônico (CO2) é o único gás de efeito estufa existente na atmosfera.",a:false,fb:"Há vários: metano (CH4), óxido nitroso (N2O), vapor d'água e gases fluorados, entre outros."},
+    {t:"O metano aquece muito mais que o CO2, embora dure menos tempo na atmosfera.",a:true,fb:"Molécula por molécula o metano é dezenas de vezes mais potente, mas se degrada em ~12 anos."},
+    {t:"A temperatura média global caiu cerca de um grau desde o período pré-industrial.",a:false,fb:"Ao contrário: a média global subiu cerca de 1,5°C desde o intervalo de 1850 a 1900."},
+    {t:"O ano de 2024 foi o mais quente já registrado na história das medições diretas.",a:true,fb:"A OMM confirmou 2024 como o ano mais quente, com cerca de 1,55°C acima do pré-industrial."},
+    {t:"A camada de ozônio é a principal responsável por reter o calor perto do solo.",a:false,fb:"O ozônio nos protege da radiação ultravioleta; quem retém calor são os gases de efeito estufa."},
+    {t:"As correntes oceânicas distribuem calor pelo planeta e influenciam o clima local.",a:true,fb:"Correntes como a do Golfo levam calor dos trópicos aos polos e moldam o clima de regiões inteiras."},
+    {t:"Os oceanos não absorvem calor nem gás carbônico gerado pelas atividades humanas.",a:false,fb:"Os oceanos absorvem mais de 90% do calor extra e boa parte do CO2 emitido pelo ser humano."},
+    {t:"O El Niño costuma elevar a temperatura média global nos anos em que ele ocorre.",a:true,fb:"Ele libera calor do Pacífico para a atmosfera, empurrando a média global para cima."},
+    {t:"As cidades costumam ser mais frias que as áreas rurais ao redor por causa do asfalto.",a:false,fb:"É o oposto: o asfalto e o concreto retêm calor e formam as ilhas de calor urbanas."}
+  ],
+  dificil:[
+    {t:"O forçamento radiativo mede a alteração no balanço de energia da Terra, em W/m².",a:true,fb:"É o desequilíbrio entre energia recebida e emitida; valores positivos tendem a aquecer o sistema."},
+    {t:"A sensibilidade climática de equilíbrio estimada pelo IPCC é de cerca de dez graus.",a:false,fb:"A melhor estimativa do AR6 é ~3°C por duplicação de CO2, com faixa provável de 2,5°C a 4°C."},
+    {t:"O vapor d'água atua como retroalimentação positiva e amplifica o aquecimento inicial do sistema.",a:true,fb:"Ar mais quente retém mais vapor, que é gás de efeito estufa, o que intensifica o aquecimento."},
+    {t:"O aumento do CO2 resfria a estratosfera e também resfria a baixa troposfera.",a:false,fb:"O padrão observado é o oposto: a troposfera aquece enquanto a estratosfera se resfria."},
+    {t:"A alta capacidade térmica dos oceanos gera defasagem entre as emissões e o aquecimento.",a:true,fb:"O oceano absorve calor lentamente, então parte do aquecimento das emissões atuais ainda virá."},
+    {t:"O gelo marinho tem albedo baixo e absorve quase toda a luz solar.",a:false,fb:"O gelo tem albedo alto e reflete a luz; quando derrete, expõe água escura que absorve mais calor."},
+    {t:"O CO2 permanece séculos na atmosfera, o que torna seu efeito climático duradouro.",a:true,fb:"Uma fração do CO2 emitido persiste por séculos a milênios, prolongando o aquecimento."},
+    {t:"A anomalia de temperatura é sempre medida em relação à temperatura do dia anterior.",a:false,fb:"A anomalia é o desvio frente a uma média de referência de longo prazo, não ao dia anterior."},
+    {t:"A retroalimentação do gelo-albedo tende a acelerar o aquecimento observado nas regiões polares.",a:true,fb:"Menos gelo significa menos reflexão e mais absorção de calor, o que aquece ainda mais os polos."},
+    {t:"A acidificação dos oceanos ocorre porque a água absorve oxigênio direto da atmosfera.",a:false,fb:"Ela ocorre pela absorção de CO2, que forma ácido carbônico e reduz o pH da água do mar."},
+    {t:"Aerossóis de origem industrial podem mascarar parte do aquecimento ao refletir a luz.",a:true,fb:"Sulfatos e outros aerossóis espalham radiação solar e exercem um efeito de resfriamento temporário."},
+    {t:"O Acordo de Paris mede a meta de 1,5°C por um único ano isolado.",a:false,fb:"A meta é definida por médias de longo prazo (décadas), não por um ano quente isolado."}
+  ],
+  carbonauta:[
+    {t:"O forçamento radiativo de uma duplicação do CO2 é de aproximadamente 3,7 W/m².",a:true,fb:"Esse valor de ~3,7 W/m² por duplicação é a base para o cálculo da sensibilidade climática."},
+    {t:"A sensibilidade climática de equilíbrio avaliada no AR6 tem melhor estimativa de 6°C.",a:false,fb:"A melhor estimativa do AR6 é 3°C, com faixa provável de 2,5°C a 4°C, não 6°C."},
+    {t:"A resposta de Planck, sem retroalimentações, limita o aquecimento a cerca de 1,2°C.",a:true,fb:"Só pela lei de Stefan-Boltzmann, 3,7 W/m² produziriam ~1,2°C; os feedbacks amplificam esse valor."},
+    {t:"A retroalimentação de lapse rate é positiva e reforça a do vapor d'água nos trópicos.",a:false,fb:"O feedback de lapse rate é negativo (~-0,5 W/m²/K) e compensa parte do vapor d'água."},
+    {t:"A faixa muito provável da sensibilidade climática no AR6 vai de 2°C até 5°C aproximados.",a:true,fb:"O AR6 estreitou a incerteza: faixa muito provável de 2°C a 5°C em torno do central de 3°C."},
+    {t:"O potencial de aquecimento global do metano em 100 anos é inferior ao do CO2 puro.",a:false,fb:"O GWP-100 do metano é cerca de 28 a 30 vezes o do CO2; em 20 anos, ainda maior."},
+    {t:"A retroalimentação do vapor d'água tem valor central próximo de +1,8 W/m² por Kelvin.",a:true,fb:"É o feedback positivo mais robusto; junto ao lapse rate negativo, resulta em líquido positivo."},
+    {t:"As nuvens formam a retroalimentação mais bem restringida e de menor incerteza do sistema.",a:false,fb:"Ao contrário: as nuvens são a maior fonte de incerteza na estimativa da sensibilidade climática."},
+    {t:"O desequilíbrio energético da Terra é positivo, da ordem de 1 W/m², e vai sobretudo ao oceano.",a:true,fb:"Esse excesso de energia acumulado é absorvido em mais de 90% pelos oceanos profundos e de superfície."},
+    {t:"A concentração atmosférica de CO2 permanece abaixo de 350 ppm em medições recentes.",a:false,fb:"As medições recentes já ultrapassam 420 ppm, bem acima do patamar pré-industrial de ~280 ppm."},
+    {t:"A anomalia de 2024 atingiu cerca de 1,55°C acima da média de 1850-1900, segundo a OMM.",a:true,fb:"Foi o primeiro ano-calendário a superar 1,5°C, embora a meta de Paris se refira a médias longas."},
+    {t:"A resposta transiente ao clima (TCR) é sempre maior que a sensibilidade de equilíbrio.",a:false,fb:"O TCR é sempre menor que a ECS, pois o oceano ainda não terminou de absorver o calor no transiente."},
+    {t:"O resfriamento da estratosfera é uma impressão digital do forçamento por gases de efeito estufa.",a:true,fb:"O resfriamento estratosférico com troposfera aquecendo distingue o efeito dos gases do de variações solares."},
+    {t:"A retroalimentação de gelo-albedo tem sinal negativo e desacelera o aquecimento nos polos.",a:false,fb:"Ela é positiva: menos gelo reduz o albedo, aumenta a absorção de calor e amplifica o aquecimento polar."}
+  ]
+};
+
+const LVL_NAMES = {basico:"Básico",inter:"Intermediário",dificil:"Difícil",carbonauta:"🛰️ Carbonauta"};
+
+/* ============ ESTADO ============ */
+let level="basico", queue=[], idx=0, hits=0, errs=0, streak=0, answered=false;
+let t0=0, timer=null, elapsed=0;
+
+/* Fisher–Yates */
+function shuffle(a){for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;}
+
+const $=id=>document.getElementById(id);
+
+function startLevel(lv){
+  level=lv;
+  document.querySelectorAll(".pill").forEach(p=>p.classList.toggle("active",p.dataset.lvl===lv));
+  queue=shuffle(DATA[lv].map(q=>({...q})));
+  idx=0;hits=0;errs=0;streak=0;answered=false;elapsed=0;
+  $("rankLvl").textContent="Nível: "+LVL_NAMES[lv];
+  clearInterval(timer);
+  t0=Date.now();
+  timer=setInterval(()=>{elapsed=Math.floor((Date.now()-t0)/1000);$("hTime").textContent=elapsed+"s";},250);
+  updateHUD();
+  updateThermometer();
+  loadRanking();
+  render();
+}
+
+function updateThermometer(outcome){
+  const meter=$("thermoWidget"),fill=$("thermoFill"),caption=$("thermoCaption");
+  if(!meter||!fill||!caption)return;
+  // Barra de conquista acumulada: cada acerto acrescenta 1/N da escala.
+  // Assim, 100% só é alcançado com todas as questões corretas.
+  // Não representa temperatura física nem aquecimento global.
+  const total=queue.length||1;
+  const progress=Math.max(0,Math.min(100,(hits/total)*100));
+  fill.style.setProperty("--heat",progress.toFixed(2)+"%");
+  caption.textContent=Math.round(progress)+"% do desafio · "+hits+"/"+total+" acertos";
+  meter.classList.remove("is-correct","is-wrong");
+  void meter.offsetWidth;
+  if(outcome===true)meter.classList.add("is-correct");
+  else if(outcome===false)meter.classList.add("is-wrong");
+}
+function updateHUD(){
+  $("hTime").textContent=elapsed+"s";
+  $("hHit").textContent=hits+"/"+queue.length;
+  $("hErr").textContent=errs;
+  $("hStreak").textContent=streak;
+  $("prog").style.width=(idx/queue.length*100)+"%";
+}
+
+function render(){
+  answered=false;
+  const q=queue[idx];
+  $("game").innerHTML=`
+    <div class="card" id="card">
+      <span class="qtag">Afirmação ${idx+1} de ${queue.length}</span>
+      <div class="statement">${escapeHtml(q.t)}</div>
+      <div class="vf">
+        <button class="btn-v" id="btnV">✔ Verdadeiro</button>
+        <button class="btn-f" id="btnF">✘ Falso</button>
+      </div>
+      <div class="feedback" id="fb"></div>
+      <button class="next-btn hide" id="next"></button>
+    </div>`;
+  $("btnV").onclick=()=>answer(true);
+  $("btnF").onclick=()=>answer(false);
+}
+
+function answer(choice){
+  if(answered)return;answered=true;
+  const q=queue[idx];
+  const correct=(choice===q.a);
+  const card=$("card"),fb=$("fb");
+  $("btnV").disabled=true;$("btnF").disabled=true;
+  (choice?$("btnV"):$("btnF")).classList.add("chosen");
+  if(correct){
+    hits++;streak++;
+    card.classList.add("pop");
+    fb.className="feedback show ok";
+    fb.innerHTML=`<span class="verdict">✅ Correto! (${q.a?"Verdadeiro":"Falso"})</span>${escapeHtml(q.fb)}`;
+  }else{
+    errs++;streak=0;
+    card.classList.add("shake");
+    fb.className="feedback show no";
+    fb.innerHTML=`<span class="verdict">❌ Não! Era ${q.a?"Verdadeiro":"Falso"}.</span>${escapeHtml(q.fb)}`;
+  }
+  setTimeout(()=>card.classList.remove("pop","shake"),450);
+  updateHUD();
+  updateThermometer(correct);
+  const nb=$("next");
+  nb.classList.remove("hide");
+  nb.textContent=(idx+1<queue.length)?"Próxima afirmação →":"Ver resultado 🎉";
+  nb.onclick=()=>{
+    idx++;
+    if(idx<queue.length){render();updateHUD();}
+    else finish();
+  };
+}
+
+function finish(){
+  clearInterval(timer);
+  $("prog").style.width="100%";
+  const pct=Math.round(hits/queue.length*100);
+  let emoji= pct===100?"🏆":pct>=70?"🎉":pct>=40?"👍":"🌱";
+  $("game").innerHTML=`
+    <div class="final">
+      <h2>${emoji} Fim de jogo!</h2>
+      <div class="score-big">${hits}/${queue.length}</div>
+      <p>${pct}% de acerto · Nível ${LVL_NAMES[level]}</p>
+      <p>Tempo: ${elapsed}s · Erros: ${errs}</p>
+      <div class="save-row">
+        <input id="pname" maxlength="20" placeholder="Seu nome para o ranking">
+        <button id="saveBtn">Salvar no ranking</button>
+      </div>
+      <div class="muted" id="saveMsg" style="min-height:1.2em;font-size:.86rem;opacity:.85"></div>
+      <button class="replay" id="replay">Jogar de novo 🔁</button>
+    </div>`;
+  $("replay").onclick=()=>startLevel(level);
+  $("saveBtn").onclick=saveScore;
+  $("howto").classList.add("hide");
+}
+
+async function saveScore(){
+  const nameEl=$("pname"),msg=$("saveMsg");
+  const name=(nameEl.value||"").trim().slice(0,20)||"Anônimo";
+  if(!db){msg.textContent="⚠️ Ranking offline — sua pontuação vale localmente.";return;}
+  $("saveBtn").disabled=true;msg.textContent="Salvando…";
+  try{
+    const {collection,addDoc,serverTimestamp}=fs;
+    await addDoc(collection(db,"games",GAME_ID,"scores"),{
+      name, score:hits, total:queue.length, seconds:elapsed,
+      level:level, ts:serverTimestamp()
+    });
+    msg.textContent="✅ Salvo! Veja o ranking abaixo.";
+    loadRanking();
+  }catch(e){
+    console.warn(e);msg.textContent="⚠️ Não foi possível salvar agora, mas o jogo continua.";
+  }
+  $("saveBtn").disabled=false;
+}
+
+async function loadRanking(){
+  const list=$("rankList"),msg=$("rankMsg");
+  list.innerHTML="";
+  if(!db){msg.textContent="⚠️ Ranking indisponível (offline). O jogo funciona normalmente.";return;}
+  msg.textContent="Carregando ranking…";
+  try{
+    const {collection,query,orderBy,limit,getDocs}=fs;
+    // orderBy campo único + limit; filtra o nível no cliente (evita índice composto)
+    const q=query(collection(db,"games",GAME_ID,"scores"),orderBy("score","desc"),limit(200));
+    const snap=await getDocs(q);
+    let rows=[];
+    snap.forEach(d=>{const v=d.data();if(v.level===level)rows.push(v);});
+    rows.sort((a,b)=>(b.score-a.score)||((a.seconds||9999)-(b.seconds||9999)));
+    rows=rows.slice(0,10);
+    if(!rows.length){msg.textContent="Ainda sem pontuações neste nível. Seja o primeiro! 🌟";return;}
+    msg.textContent="";
+    list.innerHTML=rows.map(r=>`<li><span class="nm">${escapeHtml(r.name||"Anônimo")}</span>
+      <span class="sc">${r.score}/${r.total||"?"} · ${r.seconds||0}s</span></li>`).join("");
+  }catch(e){
+    console.warn(e);msg.textContent="⚠️ Não foi possível carregar o ranking agora.";
+  }
+}
+
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+/* ============ INIT ============ */
+document.querySelectorAll(".pill").forEach(p=>{
+  p.onclick=()=>{$("howto").classList.remove("hide");startLevel(p.dataset.lvl);};
+});
+(async()=>{await initFirebase();startLevel("basico");})();
+</script>
+</body>
+</html>
